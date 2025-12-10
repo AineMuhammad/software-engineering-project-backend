@@ -1,5 +1,22 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin if available
+let firebaseAdminInitialized = false;
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = require('../serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    firebaseAdminInitialized = true;
+    console.log('Firebase Admin initialized');
+  } catch (error) {
+    // Firebase Admin not available - Google sign-in won't work with backend
+    console.warn('Firebase Admin not initialized:', error.message);
+  }
+}
 
 // Generate JWT Token
 const generateToken = (userId) => {
@@ -13,9 +30,61 @@ const generateToken = (userId) => {
 
 const signin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, firebaseToken } = req.body;
 
-    // Validation
+    // Handle Firebase/Google authentication
+    if (firebaseToken && firebaseAdminInitialized) {
+      try {
+        // Verify Firebase token
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        const { uid, email: firebaseEmail, name } = decodedToken;
+
+        // Find or create user
+        let user = await User.findOne({ firebaseUid: uid });
+        
+        if (!user) {
+          // Check if user exists with this email
+          user = await User.findOne({ email: firebaseEmail });
+          
+          if (user) {
+            // Link Firebase UID to existing user
+            user.firebaseUid = uid;
+            await user.save();
+          } else {
+            // Create new user (password not required for Firebase users)
+            user = new User({
+              name: name || firebaseEmail?.split('@')[0] || 'User',
+              email: firebaseEmail,
+              firebaseUid: uid,
+              password: 'firebase-auth-' + uid, // Dummy password for schema validation
+            });
+            await user.save();
+          }
+        }
+
+        // Generate JWT token
+        const token = generateToken(user._id);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Sign in successful',
+          token,
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+          },
+        });
+      } catch (firebaseError) {
+        console.error('Firebase token verification error:', firebaseError);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid Firebase token',
+        });
+      }
+    }
+
+    // Handle email/password authentication
     if (!email || !password) {
       return res.status(400).json({
         success: false,
