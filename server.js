@@ -16,6 +16,8 @@ const corsOptions = {
   ],
   credentials: true,
   optionsSuccessStatus: 200,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
 };
 app.use(cors(corsOptions)); // Enable CORS for frontend
 app.use(express.json()); // Allows us to parse JSON in request bodies
