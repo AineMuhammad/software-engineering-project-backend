@@ -6,7 +6,18 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(cors()); // Enable CORS for frontend
+// CORS configuration - allow requests from frontend
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://personal-mood-tracker-800c5.web.app',
+    'https://personal-mood-tracker-800c5.firebaseapp.com',
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions)); // Enable CORS for frontend
 app.use(express.json()); // Allows us to parse JSON in request bodies
 
 // 1. Connect to MongoDB
