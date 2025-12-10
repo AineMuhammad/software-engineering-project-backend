@@ -1,0 +1,58 @@
+{
+  "name": "Backend Development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
+  
+  // Set the working directory to the backend folder
+  "workspaceFolder": "/workspace/backend",
+  "workspaceMount": "source=${localWorkspaceFolder}/backend,target=/workspace/backend,type=bind",
+  
+  // Features to install
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  
+  // Port forwarding for Express server
+  "forwardPorts": [5000],
+  "portsAttributes": {
+    "5000": {
+      "label": "Express API Server",
+      "onAutoForward": "notify"
+    }
+  },
+  
+  // Install dependencies on container creation
+  "postCreateCommand": "npm install",
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "mongodb.mongodb-vscode",
+        "christian-kohler.path-intellisense",
+        "formulahendry.auto-rename-tag",
+        "ms-vscode.vscode-json"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "files.watcherExclude": {
+          "**/node_modules/**": true
+        }
+      }
+    }
+  },
+  
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  },
+  
+  "remoteUser": "node"
+}
+
