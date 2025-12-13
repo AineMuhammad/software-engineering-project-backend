@@ -66,14 +66,29 @@ const signin = async (req, res) => {
         const { uid, email: firebaseEmail, name } = decodedToken;
         console.log('Firebase token verified for:', firebaseEmail);
 
-        // Check MongoDB connection state
+        // Check MongoDB connection state and wait if needed
         const mongoose = require('mongoose');
         if (mongoose.connection.readyState !== 1) {
-          console.error('MongoDB not connected. ReadyState:', mongoose.connection.readyState);
-          return res.status(503).json({
-            success: false,
-            message: 'Database connection not ready. Please try again.',
-          });
+          console.warn('MongoDB not ready. ReadyState:', mongoose.connection.readyState, '- Waiting for connection...');
+          
+          // Wait for connection with timeout
+          let attempts = 0;
+          const maxAttempts = 10; // 5 seconds total (10 * 500ms)
+          
+          while (mongoose.connection.readyState !== 1 && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+            attempts++;
+          }
+          
+          if (mongoose.connection.readyState !== 1) {
+            console.error('MongoDB connection timeout. ReadyState:', mongoose.connection.readyState);
+            return res.status(503).json({
+              success: false,
+              message: 'Database connection not ready. Please try again in a moment.',
+            });
+          }
+          
+          console.log('MongoDB connection established after waiting');
         }
 
         // Find or create user with timeout

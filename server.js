@@ -22,14 +22,40 @@ const corsOptions = {
 app.use(cors(corsOptions)); // Enable CORS for frontend
 app.use(express.json()); // Allows us to parse JSON in request bodies
 
-// 1. Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+// 1. Connect to MongoDB with connection options
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      connectTimeoutMS: 30000, // 30 seconds
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // Disable mongoose buffering
+    });
     console.log('Connected to MongoDB Atlas');
-  })
-  .catch((error) => {
-    console.error('Connection error:', error);
-  });
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    // Don't exit - let the server start and retry
+  }
+};
+
+// Handle connection events
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
+
+// Start connection (don't block server startup, but log status)
+connectDB();
 
 // 2. Routes
 app.get('/', (req, res) => {
