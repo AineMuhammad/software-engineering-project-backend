@@ -31,7 +31,6 @@ const connectDB = async () => {
       connectTimeoutMS: 30000, // 30 seconds
       // Keep buffering enabled so queries wait for connection
       bufferCommands: true,
-      bufferMaxEntries: 0, // Unlimited buffering
     });
     console.log('Connected to MongoDB Atlas');
   } catch (error) {
