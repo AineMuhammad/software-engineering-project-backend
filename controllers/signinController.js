@@ -50,18 +50,44 @@ const signin = async (req, res) => {
     const { email, password, firebaseToken } = req.body;
 
     // Handle Firebase/Google authentication
-    if (firebaseToken && firebaseAdminInitialized) {
+    if (firebaseToken) {
+      if (!firebaseAdminInitialized) {
+        console.error('Firebase Admin not initialized - check FIREBASE_SERVICE_ACCOUNT env var');
+        return res.status(500).json({
+          success: false,
+          message: 'Firebase Admin not initialized. Google sign-in is not available.',
+        });
+      }
+
       try {
         // Verify Firebase token
+        console.log('Verifying Firebase token...');
         const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
         const { uid, email: firebaseEmail, name } = decodedToken;
+        console.log('Firebase token verified for:', firebaseEmail);
 
-        // Find or create user
+        // Check MongoDB connection state
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) {
+          console.error('MongoDB not connected. ReadyState:', mongoose.connection.readyState);
+          return res.status(503).json({
+            success: false,
+            message: 'Database connection not ready. Please try again.',
+          });
+        }
+
+        // Find or create user with timeout
+        console.log('Searching for user with firebaseUid:', uid);
+        const startTime = Date.now();
         let user = await User.findOne({ firebaseUid: uid });
+        console.log(`User lookup by firebaseUid took ${Date.now() - startTime}ms`);
         
         if (!user) {
           // Check if user exists with this email
+          console.log('User not found by firebaseUid, checking email:', firebaseEmail);
+          const emailStartTime = Date.now();
           user = await User.findOne({ email: firebaseEmail });
+          console.log(`User lookup by email took ${Date.now() - emailStartTime}ms`);
           
           if (user) {
             // Link Firebase UID to existing user
