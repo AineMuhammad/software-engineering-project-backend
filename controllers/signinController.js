@@ -6,15 +6,32 @@ const admin = require('firebase-admin');
 let firebaseAdminInitialized = false;
 if (!admin.apps.length) {
   try {
-    const serviceAccount = require('../serviceAccountKey.json');
+    let serviceAccount;
+    
+    // Try to use environment variable first (for production/Render)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      // FIREBASE_SERVICE_ACCOUNT should be a JSON string of the entire service account
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      console.log('Using Firebase Admin from FIREBASE_SERVICE_ACCOUNT environment variable');
+    } else {
+      // Fallback to serviceAccountKey.json file (for local development)
+      try {
+        serviceAccount = require('../serviceAccountKey.json');
+        console.log('Using Firebase Admin from serviceAccountKey.json file');
+      } catch (fileError) {
+        throw new Error('Firebase service account not found. Please provide FIREBASE_SERVICE_ACCOUNT env var or serviceAccountKey.json file.');
+      }
+    }
+    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
     firebaseAdminInitialized = true;
-    console.log('Firebase Admin initialized');
+    console.log('Firebase Admin initialized successfully');
   } catch (error) {
     // Firebase Admin not available - Google sign-in won't work with backend
     console.warn('Firebase Admin not initialized:', error.message);
+    console.warn('Google sign-in will not work until Firebase Admin is properly configured.');
   }
 }
 
