@@ -29,8 +29,9 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 30000, // 30 seconds
       socketTimeoutMS: 45000, // 45 seconds
       connectTimeoutMS: 30000, // 30 seconds
-      bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0, // Disable mongoose buffering
+      // Keep buffering enabled so queries wait for connection
+      bufferCommands: true,
+      bufferMaxEntries: 0, // Unlimited buffering
     });
     console.log('Connected to MongoDB Atlas');
   } catch (error) {
@@ -53,9 +54,6 @@ mongoose.connection.on('disconnected', () => {
 mongoose.connection.on('reconnected', () => {
   console.log('MongoDB reconnected');
 });
-
-// Start connection (don't block server startup, but log status)
-connectDB();
 
 // 2. Routes
 app.get('/', (req, res) => {
@@ -84,8 +82,21 @@ app.use('/api/movie', require('./routes/movie'));
 // Reflection routes (protected)
 app.use('/api/reflection', require('./routes/reflection'));
 
-// 3. Start Server
+// 3. Start Server - Wait for MongoDB connection first
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+// Connect to MongoDB and then start server
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to start server:', error);
+    // Still start server even if MongoDB connection fails
+    // This allows the app to run and retry connection
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} (MongoDB connection pending)`);
+    });
+  });
